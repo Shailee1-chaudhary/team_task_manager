@@ -1,5 +1,7 @@
 # 🚀 Team Task Manager
 
+🌐 **Live Demo:** [https://prod1-team-task-mgr.up.railway.app](https://prod1-team-task-mgr.up.railway.app)
+
 A full-stack web application built with **Java Spring Boot** that allows teams to create projects, assign tasks, track progress, and visualize work on a **Kanban board** — all with **role-based access control (Admin/Member)**.
 
 ## 📋 Key Features
@@ -48,8 +50,7 @@ A full-stack web application built with **Java Spring Boot** that allows teams t
 
 ### 1. Clone the repository
 
-git clone https://github.com/your-username/team-task-manager.git
-cd team-task-manager
+git clone https://github.com/Shailee1-chaudhary/team_task_manager.git
 
 
 ### 2. Configure the application
@@ -61,8 +62,8 @@ No additional configuration needed. H2 in-memory database is used by default.
 Set the following environment variables:
 
 export DATABASE_URL=jdbc:mysql://localhost:3306/taskmanagerdb
-export DATABASE_USERNAME=root
-export DATABASE_PASSWORD=your_password
+export DATABASE_USERNAME=your_db_username
+export DATABASE_PASSWORD=your_db_password
 export DATABASE_DRIVER=com.mysql.cj.jdbc.Driver
 export HIBERNATE_DIALECT=org.hibernate.dialect.MySQLDialect
 export JWT_SECRET=your-256-bit-secret-key-here
