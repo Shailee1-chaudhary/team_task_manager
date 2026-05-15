@@ -51,6 +51,26 @@ public class TaskController {
         }
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse> getAllTasks(@AuthenticationPrincipal User currentUser) {
+        log.info("[TaskController] GET /api/tasks/all - User: {}",
+                currentUser != null ? currentUser.getEmail() : "NULL");
+        if (currentUser == null) {
+            log.error("[TaskController] GET /api/tasks/all - currentUser is NULL!");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentication required. Please log in again."));
+        }
+        try {
+            List<TaskResponse> tasks = taskService.getAllTasks(currentUser);
+            log.info("[TaskController] Retrieved {} tasks (all)", tasks.size());
+            return ResponseEntity.ok(ApiResponse.success("All tasks retrieved successfully", tasks));
+        } catch (Exception e) {
+            log.error("[TaskController] Failed to get all tasks - {} - {}",
+                    e.getClass().getSimpleName(), e.getMessage());
+            throw e;
+        }
+    }
+
     @GetMapping("/project/{projectId}")
     public ResponseEntity<ApiResponse> getTasksByProject(
             @PathVariable Long projectId,

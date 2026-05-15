@@ -20,6 +20,7 @@
                 <a href="/dashboard.html"><span class="icon">📊</span> Dashboard</a>
                 <a href="/projects.html"><span class="icon">📁</span> Projects</a>
                 <a href="/tasks.html"><span class="icon">✅</span> My Tasks</a>
+                <a href="/board.html"><span class="icon">📋</span> Board</a>
             </nav>
             <div class="sidebar-footer">
                 <a href="#" onclick="logout(); return false;">🚪 Logout</a>
@@ -29,7 +30,7 @@
         <main class="main-content">
             <div class="page-header">
                 <h1>📁 Projects</h1>
-                <button class="btn btn-primary" onclick="openCreateModal()">+ New Project</button>
+                <button class="btn btn-primary" id="newProjectBtn" onclick="openCreateModal()" style="display:none;">+ New Project</button>
             </div>
 
             <div id="alert" class="alert alert-error"></div>
@@ -93,6 +94,13 @@
         if (!requireAuth()) { /* redirects */ }
         initSidebar();
         let allUsers = [];
+
+        // Only show "New Project" button for admins
+        const currentUser = getUser();
+        if (currentUser && currentUser.role === 'ADMIN') {
+            document.getElementById('newProjectBtn').style.display = '';
+        }
+
         loadProjects();
 
         async function loadProjects() {
@@ -150,6 +158,11 @@
         }
 
         function openCreateModal() {
+            const user = getUser();
+            if (!user || user.role !== 'ADMIN') {
+                showAlert('alert', 'Only admins can create projects. Please contact your administrator.', 'error');
+                return;
+            }
             document.getElementById('modalTitle').textContent = 'Create Project';
             document.getElementById('saveBtn').textContent = 'Create';
             document.getElementById('projectId').value = '';

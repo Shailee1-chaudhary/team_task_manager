@@ -100,6 +100,15 @@ public class TaskService {
         return mapToResponse(task);
     }
 
+    public List<TaskResponse> getAllTasks(User currentUser) {
+        log.info("[TaskService] Getting all tasks (board view) for user: {} (role: {})",
+                currentUser.getEmail(), currentUser.getRole());
+        // Board view: everyone sees all tasks regardless of role
+        List<Task> tasks = taskRepository.findAll();
+        log.info("[TaskService] Found {} total tasks for board view", tasks.size());
+        return tasks.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
     public List<TaskResponse> getTasksByProject(Long projectId, User currentUser) {
         log.info("[TaskService] Getting tasks for projectId: {} by user: {}", projectId, currentUser.getEmail());
 
@@ -290,6 +299,7 @@ public class TaskService {
 
         TaskResponse.TaskResponseBuilder builder = TaskResponse.builder()
                 .id(task.getId())
+                .taskNumber("TSK_" + task.getId())
                 .title(task.getTitle())
                 .description(task.getDescription())
                 .status(task.getStatus().name())

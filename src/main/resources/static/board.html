@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board - Team Task Manager</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>📋 Task Manager</h2>
+                <div class="user-info">
+                    <div class="user-name"></div>
+                    <div><span class="user-role-badge"></span></div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html"><span class="icon">📊</span> Dashboard</a>
+                <a href="/projects.html"><span class="icon">📁</span> Projects</a>
+                <a href="/tasks.html"><span class="icon">✅</span> My Tasks</a>
+                <a href="/board.html"><span class="icon">📋</span> Board</a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="#" onclick="logout(); return false;">🚪 Logout</a>
+            </div>
+        </aside>
+
+        <main class="main-content board-page">
+            <div class="page-header">
+                <h1>📋 Task Board</h1>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <select id="filterProject" onchange="loadBoard()" style="padding:8px 12px;border:2px solid #e1e5eb;border-radius:8px;">
+                        <option value="">All Projects</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="alert" class="alert alert-error"></div>
+
+            <div class="kanban-board" id="kanbanBoard">
+                <div class="loading"><div class="spinner"></div><p>Loading board...</p></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Task Detail Modal (same as tasks.html) -->
+    <div class="modal-overlay" id="taskDetailModal">
+        <div class="modal-large">
+            <div class="task-detail-header">
+                <button class="close-btn" onclick="closeTaskDetailModal()">&times;</button>
+                <h2 id="detailTitle"></h2>
+                <div class="task-detail-badges" id="detailBadges"></div>
+            </div>
+            <div class="task-detail-body">
+                <div class="task-detail-grid">
+                    <div class="task-detail-field">
+                        <label>Project</label>
+                        <div class="value" id="detailProject"></div>
+                    </div>
+                    <div class="task-detail-field">
+                        <label>Assignee</label>
+                        <div class="value" id="detailAssignee"></div>
+                    </div>
+                    <div class="task-detail-field">
+                        <label>Created By</label>
+                        <div class="value" id="detailCreatedBy"></div>
+                    </div>
+                    <div class="task-detail-field">
+                        <label>Due Date</label>
+                        <div class="value" id="detailDueDate"></div>
+                    </div>
+                    <div class="task-detail-field">
+                        <label>Story Points</label>
+                        <div class="value" id="detailStoryPoints"></div>
+                    </div>
+                    <div class="task-detail-field">
+                        <label>Created</label>
+                        <div class="value" id="detailCreatedAt"></div>
+                    </div>
+                </div>
+
+                <div id="detailDescriptionSection">
+                    <label style="display:block;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Description</label>
+                    <div class="task-detail-description" id="detailDescription"></div>
+                </div>
+
+                <!-- Progress Notes Section -->
+                <div class="progress-section">
+                    <h3>📝 Progress Notes <span class="count" id="progressCount">0</span></h3>
+                    <div class="progress-input-area">
+                        <textarea id="progressInput" placeholder="Add a progress update..." rows="2"></textarea>
+                        <button onclick="handleAddProgress()">Add</button>
+                    </div>
+                    <div class="progress-list" id="progressList">
+                        <div class="progress-empty">No progress notes yet. Add one above!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        if (!requireAuth()) { /* redirects */ }
+        initSidebar();
+
+        const STATUSES = [
+            { key: 'TODO', label: 'To Do' },
+            { key: 'IN_PROGRESS', label: 'In Progress' },
+            { key: 'BLOCKED', label: 'Blocked' },
+            { key: 'CODE_REVIEW', label: 'Code Review' },
+            { key: 'QA_TESTING', label: 'QA Testing' },
+            { key: 'QA_TESTING_FAILED', label: 'QA Failed' },
+            { key: 'DONE', label: 'Done' }
+        ];
+
+        let allTasks = [];
+        let projectsList = [];
+        let currentDetailTaskId = null;
+
+        loadInitialData();
+
+        async function loadInitialData() {
+            try {
+                const projResult = await getProjects();
+                if (projResult && projResult.success) {
+                    projectsList = projResult.data || [];
+                    populateProjectFilter();
+                }
+                await loadBoard();
+            } catch (err) {
+                console.error('Failed to load initial data:', err);
+            }
+        }
+
+        function populateProjectFilter() {
+            const select = document.getElementById('filterProject');
+            select.innerHTML = '<option value="">All Projects</option>' +
+                projectsList.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('');
+        }
+
+        async function loadBoard() {
+            try {
+                const result = await getAllTasksApi();
+                if (result && result.success) {
+                    allTasks = result.data || [];
+                    renderBoard();
+                }
+            } catch (err) {
+                const msg = err.data?.message || 'Failed to load tasks';
+                showAlert('alert', msg);
+            }
+        }
+
+        function renderBoard() {
+            const projectFilter = document.getElementById('filterProject').value;
+            let tasks = allTasks;
+            if (projectFilter) {
+                tasks = allTasks.filter(t => t.projectId == projectFilter);
+            }
+
+            const board = document.getElementById('kanbanBoard');
+            board.innerHTML = STATUSES.map(s => {
+                const statusTasks = tasks.filter(t => t.status === s.key);
+                return `
+                <div class="kanban-column">
+                    <div class="kanban-column-header">
+                        <span class="kanban-column-title">${s.label}</span>
+                        <span class="kanban-column-count">${statusTasks.length}</span>
+                    </div>
+                    <div class="kanban-column-body">
+                        ${statusTasks.length === 0 
+                            ? '<div class="kanban-empty">No tasks</div>'
+                            : statusTasks.map(t => renderCard(t)).join('')
+                        }
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderCard(t) {
+            return `
+            <div class="kanban-card ${t.overdue ? 'overdue' : ''}" onclick="openTaskDetail(${t.id})">
+                <div class="kanban-card-title"><span class="task-number">${escHtml(t.taskNumber)}</span> ${escHtml(t.title)}</div>
+                <div class="kanban-card-project">📁 ${escHtml(t.projectName)}</div>
+                <div class="kanban-card-meta">
+                    ${priorityBadge(t.priority)}
+                    ${t.storyPoints ? storyPointsBadge(t.storyPoints) : ''}
+                    ${t.overdue ? '<span class="badge badge-overdue">OVERDUE</span>' : ''}
+                </div>
+                <div class="kanban-card-footer">
+                    <span class="kanban-card-assignee">${t.assignee ? '👤 ' + escHtml(t.assignee.name) : '👤 Unassigned'}</span>
+                    ${t.dueDate ? '<span class="kanban-card-date">📅 ' + formatDate(t.dueDate) + '</span>' : ''}
+                </div>
+                ${t.progressCount > 0 ? '<span class="kanban-card-progress">💬 ' + t.progressCount + '</span>' : ''}
+            </div>`;
+        }
+
+        // ===== Task Detail Modal =====
+        async function openTaskDetail(taskId) {
+            currentDetailTaskId = taskId;
+            try {
+                const result = await getTask(taskId);
+                if (result && result.success) {
+                    const t = result.data;
+                    document.getElementById('detailTitle').textContent = t.taskNumber + ' — ' + t.title;
+                    document.getElementById('detailBadges').innerHTML = `
+                        ${statusBadge(t.status)}
+                        ${priorityBadge(t.priority)}
+                        ${t.storyPoints ? storyPointsBadge(t.storyPoints) : ''}
+                        ${t.overdue ? '<span class="badge badge-overdue">OVERDUE</span>' : ''}
+                    `;
+                    document.getElementById('detailProject').textContent = t.projectName;
+                    document.getElementById('detailAssignee').textContent = t.assignee ? t.assignee.name : 'Unassigned';
+                    document.getElementById('detailCreatedBy').textContent = t.createdBy ? t.createdBy.name : '—';
+                    document.getElementById('detailDueDate').textContent = t.dueDate ? formatDate(t.dueDate) : 'No due date';
+                    document.getElementById('detailStoryPoints').textContent = t.storyPoints ? t.storyPoints + ' SP' : 'Not estimated';
+                    document.getElementById('detailCreatedAt').textContent = formatDateTime(t.createdAt);
+
+                    const descEl = document.getElementById('detailDescription');
+                    if (t.description) {
+                        descEl.textContent = t.description;
+                        descEl.classList.remove('empty');
+                    } else {
+                        descEl.textContent = 'No description provided.';
+                        descEl.classList.add('empty');
+                    }
+
+                    renderProgressNotes(t.progressNotes || []);
+                    document.getElementById('taskDetailModal').classList.add('active');
+                }
+            } catch (err) {
+                const msg = err.data?.message || 'Failed to load task details';
+                showAlert('alert', msg);
+            }
+        }
+
+        function closeTaskDetailModal() {
+            document.getElementById('taskDetailModal').classList.remove('active');
+            currentDetailTaskId = null;
+            document.getElementById('progressInput').value = '';
+        }
+
+        function renderProgressNotes(notes) {
+            const list = document.getElementById('progressList');
+            const countEl = document.getElementById('progressCount');
+            countEl.textContent = notes.length;
+
+            if (notes.length === 0) {
+                list.innerHTML = '<div class="progress-empty">No progress notes yet. Add one above!</div>';
+                return;
+            }
+
+            const currentUser = getUser();
+            list.innerHTML = notes.map(n => `
+                <div class="progress-item">
+                    <div class="progress-meta">
+                        <span><span class="author">${escHtml(n.author.name)}</span> &middot; ${formatDateTime(n.createdAt)}</span>
+                    </div>
+                    <div class="progress-content">${escHtml(n.content)}</div>
+                    ${(currentUser && (n.author.id === currentUser.id || currentUser.role === 'ADMIN'))
+                        ? '<button class="delete-progress" onclick="handleDeleteProgress(' + n.id + ')" title="Delete">🗑️</button>'
+                        : ''}
+                </div>
+            `).join('');
+        }
+
+        async function handleAddProgress() {
+            const input = document.getElementById('progressInput');
+            const content = input.value.trim();
+            if (!content) return;
+            if (!currentDetailTaskId) return;
+
+            try {
+                await addTaskProgress(currentDetailTaskId, content);
+                input.value = '';
+                const result = await getTask(currentDetailTaskId);
+                if (result && result.success) {
+                    renderProgressNotes(result.data.progressNotes || []);
+                }
+                await loadBoard();
+            } catch (err) {
+                showAlert('alert', err.data?.message || 'Failed to add progress note');
+            }
+        }
+
+        async function handleDeleteProgress(progressId) {
+            if (!confirm('Delete this progress note?')) return;
+            if (!currentDetailTaskId) return;
+
+            try {
+                await deleteTaskProgress(currentDetailTaskId, progressId);
+                const result = await getTask(currentDetailTaskId);
+                if (result && result.success) {
+                    renderProgressNotes(result.data.progressNotes || []);
+                }
+                await loadBoard();
+            } catch (err) {
+                showAlert('alert', err.data?.message || 'Failed to delete progress note');
+            }
+        }
+
+        document.getElementById('progressInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleAddProgress();
+            }
+        });
+
+        // Close detail modal on overlay click
+        document.getElementById('taskDetailModal').addEventListener('click', function(e) {
+            if (e.target === this) closeTaskDetailModal();
+        });
+
+        function escHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers("/dashboard.html").permitAll()
                         .requestMatchers("/projects.html").permitAll()
                         .requestMatchers("/tasks.html").permitAll()
+                        .requestMatchers("/board.html").permitAll()
                         .requestMatchers("/css/**").permitAll()
                         .requestMatchers("/js/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()

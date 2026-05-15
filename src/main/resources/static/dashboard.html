@@ -21,6 +21,7 @@
                 <a href="/dashboard.html"><span class="icon">📊</span> Dashboard</a>
                 <a href="/projects.html"><span class="icon">📁</span> Projects</a>
                 <a href="/tasks.html"><span class="icon">✅</span> My Tasks</a>
+                <a href="/board.html"><span class="icon">📋</span> Board</a>
             </nav>
             <div class="sidebar-footer">
                 <a href="#" onclick="logout(); return false;">🚪 Logout</a>
@@ -190,7 +191,11 @@
         function renderProjects(projects) {
             const container = document.getElementById('projectsList');
             if (projects.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="icon">📁</div><h3>No projects yet</h3><p><a href="/projects.html">Create your first project</a></p></div>';
+                const user = getUser();
+                const isAdmin = user && user.role === 'ADMIN';
+                container.innerHTML = '<div class="empty-state"><div class="icon">📁</div><h3>No projects yet</h3><p>' +
+                    (isAdmin ? '<a href="/projects.html">Create your first project</a>' : 'Ask an admin to add you to a project.') +
+                    '</p></div>';
                 return;
             }
             container.innerHTML = '<div class="projects-grid">' + projects.slice(0, 6).map(p => {
@@ -212,7 +217,7 @@
             return `
             <div class="task-item ${t.overdue ? 'overdue' : ''}">
                 <div class="task-info">
-                    <h4>${escHtml(t.title)}</h4>
+                    <h4><span class="task-number">${t.taskNumber ? escHtml(t.taskNumber) : ''}</span> ${escHtml(t.title)}</h4>
                     <div class="task-meta">
                         <span>📁 ${escHtml(t.projectName)}</span>
                         <span>${statusBadge(t.status)}</span>

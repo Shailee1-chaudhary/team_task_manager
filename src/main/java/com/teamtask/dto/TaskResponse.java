@@ -16,6 +16,7 @@ import java.util.List;
 public class TaskResponse {
 
     private Long id;
+    private String taskNumber;
     private String title;
     private String description;
     private String status;

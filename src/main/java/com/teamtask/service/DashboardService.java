@@ -90,6 +90,7 @@ public class DashboardService {
     private TaskResponse mapTaskToResponse(Task task) {
         TaskResponse.TaskResponseBuilder builder = TaskResponse.builder()
                 .id(task.getId())
+                .taskNumber("TSK_" + task.getId())
                 .title(task.getTitle())
                 .description(task.getDescription())
                 .status(task.getStatus().name())

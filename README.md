@@ -1,14 +1,30 @@
 # 🚀 Team Task Manager
 
-A full-stack web application built with **Java Spring Boot** that allows users to create projects, assign tasks, and track progress with **role-based access control (Admin/Member)**.
+A full-stack web application built with **Java Spring Boot** that allows teams to create projects, assign tasks, track progress, and visualize work on a **Kanban board** — all with **role-based access control (Admin/Member)**.
 
 ## 📋 Key Features
 
 - **Authentication** — Signup & Login with JWT-based security
-- **Project & Team Management** — Create projects, add/remove team members
-- **Task Management** — Create, assign, update status & track tasks
-- **Dashboard** — Overview of tasks, status counts, and overdue items
-- **Role-Based Access Control** — Admin and Member roles with permission enforcement
+- **Project Management** — Admins create projects and manage team members
+- **Task Management** — Create, assign, update status, set priorities, story points & due dates
+- **Task Identifiers** — Every task gets a unique number (TSK_1, TSK_2, …) visible across all views
+- **7 Task Statuses** — To Do, In Progress, Blocked, Code Review, QA Testing, QA Testing Failed, Done
+- **Kanban Board** — Visual board view with columns per status, accessible to all users
+- **Progress Notes** — Add timestamped progress updates/comments on tasks
+- **Dashboard** — Overview of task counts by status, overdue items, and recent activity
+- **Role-Based Access Control** — Admin and Member roles with granular permission enforcement
+- **Input Validation** — Client-side & server-side validation with descriptive error messages
+
+## 🖥️ Pages
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Login | `/login.html` | User authentication |
+| Signup | `/signup.html` | New user registration |
+| Dashboard | `/dashboard.html` | Stats, recent tasks, project overview |
+| Projects | `/projects.html` | Project list, create (admin), manage members |
+| My Tasks | `/tasks.html` | Task list with filters, create/edit/delete tasks |
+| Board | `/board.html` | Kanban board with all tasks grouped by status |
 
 ## 🛠️ Tech Stack
 
@@ -18,6 +34,7 @@ A full-stack web application built with **Java Spring Boot** that allows users t
 | Security    | Spring Security + JWT (jjwt 0.12)   |
 | Database    | H2 (dev) / MySQL (production)       |
 | ORM         | Spring Data JPA / Hibernate         |
+| Frontend    | Vanilla HTML/CSS/JavaScript         |
 | Build       | Maven                               |
 | Validation  | Jakarta Bean Validation              |
 
@@ -30,10 +47,10 @@ A full-stack web application built with **Java Spring Boot** that allows users t
 ## 🚀 Getting Started
 
 ### 1. Clone the repository
-```bash
+
 git clone https://github.com/your-username/team-task-manager.git
 cd team-task-manager
-```
+
 
 ### 2. Configure the application
 
@@ -42,20 +59,20 @@ No additional configuration needed. H2 in-memory database is used by default.
 
 **For Production (MySQL):**
 Set the following environment variables:
-```bash
+
 export DATABASE_URL=jdbc:mysql://localhost:3306/taskmanagerdb
 export DATABASE_USERNAME=root
 export DATABASE_PASSWORD=your_password
 export DATABASE_DRIVER=com.mysql.cj.jdbc.Driver
 export HIBERNATE_DIALECT=org.hibernate.dialect.MySQLDialect
 export JWT_SECRET=your-256-bit-secret-key-here
-```
+
 
 ### 3. Build & Run
-```bash
+
 mvn clean install
 mvn spring-boot:run
-```
+
 
 The application will start at `http://localhost:8080`
 
@@ -89,7 +106,7 @@ Access at: `http://localhost:8080/h2-console`
 ### Projects
 | Method | Endpoint                              | Description        | Access           |
 |--------|---------------------------------------|--------------------|------------------|
-| POST   | `/api/projects`                       | Create project     | Authenticated    |
+| POST   | `/api/projects`                       | Create project     | Admin only       |
 | GET    | `/api/projects`                       | Get all projects   | Authenticated    |
 | GET    | `/api/projects/{id}`                  | Get project by ID  | Project member   |
 | PUT    | `/api/projects/{id}`                  | Update project     | Owner/Admin      |
@@ -98,55 +115,75 @@ Access at: `http://localhost:8080/h2-console`
 | DELETE | `/api/projects/{id}/members/{userId}` | Remove member      | Owner/Admin      |
 
 ### Tasks
-| Method | Endpoint                      | Description           | Access         |
-|--------|-------------------------------|-----------------------|----------------|
-| POST   | `/api/tasks`                  | Create task           | Project member |
-| GET    | `/api/tasks/project/{id}`     | Get tasks by project  | Project member |
-| GET    | `/api/tasks/my-tasks`         | Get my assigned tasks | Authenticated  |
-| GET    | `/api/tasks/{id}`             | Get task by ID        | Project member |
-| PUT    | `/api/tasks/{id}`             | Update task           | Project member |
-| PATCH  | `/api/tasks/{id}/status`      | Update task status    | Project member |
-| DELETE | `/api/tasks/{id}`             | Delete task           | Owner/Admin    |
+| Method | Endpoint                          | Description           | Access         |
+|--------|-----------------------------------|-----------------------|----------------|
+| POST   | `/api/tasks`                      | Create task           | Project member |
+| GET    | `/api/tasks/all`                  | Get all tasks (board) | Authenticated  |
+| GET    | `/api/tasks/project/{id}`         | Get tasks by project  | Project member |
+| GET    | `/api/tasks/my-tasks`             | Get my assigned tasks | Authenticated  |
+| GET    | `/api/tasks/{id}`                 | Get task by ID        | Project member |
+| PUT    | `/api/tasks/{id}`                 | Update task           | Project member |
+| PATCH  | `/api/tasks/{id}/status`          | Update task status    | Project member |
+| DELETE | `/api/tasks/{id}`                 | Delete task           | Owner/Admin    |
+
+### Progress Notes (Comments)
+| Method | Endpoint                              | Description            | Access         |
+|--------|---------------------------------------|------------------------|----------------|
+| GET    | `/api/tasks/{id}/progress`            | Get progress notes     | Project member |
+| POST   | `/api/tasks/{id}/progress`            | Add progress note      | Project member |
+| DELETE | `/api/tasks/{id}/progress/{noteId}`   | Delete progress note   | Author/Admin   |
 
 ### Dashboard
 | Method | Endpoint          | Description       | Access        |
 |--------|-------------------|--------------------|---------------|
 | GET    | `/api/dashboard`  | Get dashboard data | Authenticated |
 
+## 📊 Task Statuses
+
+| Status | Description |
+|--------|-------------|
+| `TODO` | Task is pending, not yet started |
+| `IN_PROGRESS` | Task is actively being worked on |
+| `BLOCKED` | Task is blocked by a dependency or issue |
+| `CODE_REVIEW` | Code is written and awaiting review |
+| `QA_TESTING` | Task is being tested by QA |
+| `QA_TESTING_FAILED` | QA testing found issues, needs rework |
+| `DONE` | Task is complete |
+
 ## 📦 API Request/Response Examples
 
 ### Signup
-```json
+
 POST /api/auth/signup
 {
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123",
+  "name": "Shailee Chaudhary",
+  "email": "shailee@gmail.com",
+  "password": "password123@",
   "role": "ADMIN"
 }
-```
+
 
 ### Login
-```json
+
 POST /api/auth/login
 {
-  "email": "john@example.com",
-  "password": "password123"
+  "email": "shailee@gmail.com",
+  "password": "password123@"
 }
-```
 
-### Create Project
-```json
+
+### Create Project (Admin only)
+
 POST /api/projects
 Authorization: Bearer <token>
 {
-  "name": "My Project",
-  "description": "Project description"
+  "name": "Code Review",
+  "description": "Code Review"
 }
-```
+
 
 ### Create Task
-```json
+
 POST /api/tasks
 Authorization: Bearer <token>
 {
@@ -154,32 +191,43 @@ Authorization: Bearer <token>
   "description": "Create the login UI",
   "status": "TODO",
   "priority": "HIGH",
+  "storyPoints": 5,
   "dueDate": "2026-06-01",
   "projectId": 1,
   "assigneeId": 2
 }
-```
+
 
 ### Update Task Status
-```json
+
 PATCH /api/tasks/1/status
 Authorization: Bearer <token>
 {
-  "status": "IN_PROGRESS"
+  "status": "CODE_REVIEW"
 }
-```
+
+
+### Add Progress Note
+
+POST /api/tasks/1/progress
+Authorization: Bearer <token>
+{
+  "content": "Completed the API integration, moving to testing"
+}
+
 
 ## 🔐 Role-Based Access Control
 
 | Feature                  | Admin | Member (Owner) | Member |
 |--------------------------|-------|----------------|--------|
-| Create Project           | ✅     | ✅              | ✅      |
+| Create Project           | ✅     | ❌              | ❌      |
 | Update/Delete Project    | ✅     | ✅              | ❌      |
 | Add/Remove Members       | ✅     | ✅              | ❌      |
 | Create Task              | ✅     | ✅              | ✅      |
 | Update Task              | ✅     | ✅              | ✅      |
 | Delete Task              | ✅     | ✅              | ❌      |
 | Reassign Task            | ✅     | ✅              | ❌      |
+| View Board (all tasks)   | ✅     | ✅              | ✅      |
 | View All Users           | ✅     | ❌              | ❌      |
 | View Dashboard           | ✅     | ✅              | ✅      |
 
@@ -200,11 +248,12 @@ Authorization: Bearer <token>
 
 ## 📂 Project Structure
 
-```
+
 src/main/java/com/teamtask/
 ├── TeamTaskManagerApplication.java
 ├── controller/
 │   ├── AuthController.java
+│   ├── CommentController.java
 │   ├── DashboardController.java
 │   ├── HomeController.java
 │   ├── ProjectController.java
@@ -213,6 +262,8 @@ src/main/java/com/teamtask/
 ├── dto/
 │   ├── ApiResponse.java
 │   ├── AuthResponse.java
+│   ├── CommentRequest.java
+│   ├── CommentResponse.java
 │   ├── DashboardResponse.java
 │   ├── LoginRequest.java
 │   ├── SignupRequest.java
@@ -222,6 +273,7 @@ src/main/java/com/teamtask/
 │   ├── TaskResponse.java
 │   └── UserSummary.java
 ├── entity/
+│   ├── Comment.java
 │   ├── Project.java
 │   ├── Role.java
 │   ├── Task.java
@@ -234,6 +286,7 @@ src/main/java/com/teamtask/
 │   ├── GlobalExceptionHandler.java
 │   └── ResourceNotFoundException.java
 ├── repository/
+│   ├── CommentRepository.java
 │   ├── ProjectRepository.java
 │   ├── TaskRepository.java
 │   └── UserRepository.java
@@ -243,12 +296,26 @@ src/main/java/com/teamtask/
 │   └── SecurityConfig.java
 └── service/
     ├── AuthService.java
+    ├── CommentService.java
     ├── CustomUserDetailsService.java
     ├── DashboardService.java
     ├── ProjectService.java
     └── TaskService.java
-```
+
+src/main/resources/static/
+├── index.html
+├── login.html
+├── signup.html
+├── dashboard.html
+├── projects.html
+├── tasks.html
+├── board.html
+├── css/
+│   └── style.css
+└── js/
+    └── api.js
+
 
 ## 📄 License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is open source.

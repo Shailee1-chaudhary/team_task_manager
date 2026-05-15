@@ -177,6 +177,8 @@ async function updateTask(id, data) { return apiCall('/tasks/' + id, 'PUT', data
 async function updateTaskStatus(id, status) { return apiCall('/tasks/' + id + '/status', 'PATCH', { status }); }
 async function deleteTask(id) { return apiCall('/tasks/' + id, 'DELETE'); }
 
+async function getAllTasksApi() { return apiCall('/tasks/all'); }
+
 // Progress Notes API
 async function getTaskProgress(taskId) { return apiCall('/tasks/' + taskId + '/progress'); }
 async function addTaskProgress(taskId, content) { return apiCall('/tasks/' + taskId + '/progress', 'POST', { content }); }
