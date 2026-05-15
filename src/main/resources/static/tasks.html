@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - Team Task Manager</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>📋 Task Manager</h2>
+                <div class="user-info">
+                    <div class="user-name"></div>
+                    <div><span class="user-role-badge"></span></div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html"><span class="icon">📊</span> Dashboard</a>
+                <a href="/projects.html"><span class="icon">📁</span> Projects</a>
+                <a href="/tasks.html"><span class="icon">✅</span> My Tasks</a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="#" onclick="logout(); return false;">🚪 Logout</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1 id="pageTitle">✅ My Tasks</h1>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <select id="filterStatus" onchange="filterTasks()" style="padding:8px 12px;border:2px solid #e1e5eb;border-radius:8px;">
+                        <option value="">All Status</option>
+                        <option value="TODO">To Do</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="DONE">Done</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="openCreateTaskModal()">+ New Task</button>
+                </div>
+            </div>
+
+            <div id="alert" class="alert alert-error"></div>
+
+            <div id="tasksContainer">
+                <div class="loading"><div class="spinner"></div><p>Loading tasks...</p></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create/Edit Task Modal -->
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal">
+            <h2 id="taskModalTitle">Create Task</h2>
+            <div id="taskModalAlert" class="alert alert-error"></div>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
+                <div class="form-group">
+                    <label for="taskTitle">Title</label>
+                    <input type="text" id="taskTitle" placeholder="Task title" required minlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="taskDesc">Description</label>
+                    <textarea id="taskDesc" placeholder="Task description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="taskProject">Project</label>
+                    <select id="taskProject" required>
+                        <option value="">Select project...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskAssignee">Assignee</label>
+                    <select id="taskAssignee">
+                        <option value="">Unassigned</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskStatus">Status</label>
+                    <select id="taskStatus">
+                        <option value="TODO">To Do</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="DONE">Done</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskPriority">Priority</label>
+                    <select id="taskPriority">
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM" selected>Medium</option>
+                        <option value="HIGH">High</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskDueDate">Due Date</label>
+                    <input type="date" id="taskDueDate">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="taskSaveBtn">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        if (!requireAuth()) { /* redirects */ }
+        initSidebar();
+
+        let currentProjectId = null;
+        let allTasks = [];
+        let projectsList = [];
+        let usersList = [];
+
+        // Check if viewing project-specific tasks
+        const params = new URLSearchParams(window.location.search);
+        currentProjectId = params.get('projectId');
+
+        if (currentProjectId) {
+            document.getElementById('pageTitle').textContent = '📝 Project Tasks';
+        }
+
+        loadData();
+
+        async function loadData() {
+            try {
+                // Load projects for dropdown
+                const projResult = await getProjects();
+                if (projResult && projResult.success) {
+                    projectsList = projResult.data || [];
+                }
+
+                // Load users for assignee dropdown
+                const usersResult = await getAllUsers();
+                if (usersResult && usersResult.success) {
+                    usersList = usersResult.data || [];
+                }
+
+                // Load tasks
+                await loadTasks();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function loadTasks() {
+            try {
+                let result;
+                if (currentProjectId) {
+                    result = await getTasksByProject(currentProjectId);
+                    // Update page title with project name
+                    const proj = projectsList.find(p => p.id == currentProjectId);
+                    if (proj) document.getElementById('pageTitle').textContent = '📝 ' + proj.name + ' - Tasks';
+                } else {
+                    result = await getMyTasks();
+                }
+
+                if (result && result.success) {
+                    allTasks = result.data || [];
+                    filterTasks();
+                }
+            } catch (err) {
+                showAlert('alert', 'Failed to load tasks');
+            }
+        }
+
+        function filterTasks() {
+            const status = document.getElementById('filterStatus').value;
+            let filtered = allTasks;
+            if (status) {
+                filtered = allTasks.filter(t => t.status === status);
+            }
+            renderTasks(filtered);
+        }
+
+        function renderTasks(tasks) {
+            const container = document.getElementById('tasksContainer');
+            if (tasks.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">✅</div><h3>No tasks found</h3><p>Click "New Task" to create a task.</p></div>';
+                return;
+            }
+            const user = getUser();
+            container.innerHTML = tasks.map(t => {
+                return `
+                <div class="task-item ${t.overdue ? 'overdue' : ''}">
+                    <div class="task-info">
+                        <h4>${escHtml(t.title)}</h4>
+                        ${t.description ? '<p style="font-size:13px;color:#666;margin:4px 0;">' + escHtml(t.description) + '</p>' : ''}
+                        <div class="task-meta">
+                            <span>📁 ${escHtml(t.projectName)}</span>
+                            <span>${statusBadge(t.status)}</span>
+                            <span>${priorityBadge(t.priority)}</span>
+                            ${t.dueDate ? '<span>📅 ' + formatDate(t.dueDate) + '</span>' : ''}
+                            ${t.overdue ? '<span class="badge badge-overdue">OVERDUE</span>' : ''}
+                            ${t.assignee ? '<span>👤 ' + escHtml(t.assignee.name) + '</span>' : '<span>👤 Unassigned</span>'}
+                            ${t.createdBy ? '<span>✍️ ' + escHtml(t.createdBy.name) + '</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="task-actions">
+                        <select onchange="handleStatusChange(${t.id}, this.value)" style="padding:6px;border-radius:6px;border:1px solid #ddd;font-size:12px;">
+                            <option value="TODO" ${t.status === 'TODO' ? 'selected' : ''}>To Do</option>
+                            <option value="IN_PROGRESS" ${t.status === 'IN_PROGRESS' ? 'selected' : ''}>In Progress</option>
+                            <option value="DONE" ${t.status === 'DONE' ? 'selected' : ''}>Done</option>
+                        </select>
+                        <button class="btn btn-sm btn-warning" onclick="openEditTaskModal(${t.id})">✏️</button>
+                        <button class="btn btn-sm btn-danger" onclick="handleDeleteTask(${t.id})">🗑️</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function handleStatusChange(taskId, newStatus) {
+            try {
+                await updateTaskStatus(taskId, newStatus);
+                await loadTasks();
+            } catch (err) {
+                showAlert('alert', err.data?.message || 'Failed to update status');
+                await loadTasks(); // reload to reset select
+            }
+        }
+
+        function openCreateTaskModal() {
+            document.getElementById('taskModalTitle').textContent = 'Create Task';
+            document.getElementById('taskSaveBtn').textContent = 'Create';
+            document.getElementById('taskId').value = '';
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDesc').value = '';
+            document.getElementById('taskStatus').value = 'TODO';
+            document.getElementById('taskPriority').value = 'MEDIUM';
+            document.getElementById('taskDueDate').value = '';
+
+            populateProjectDropdown();
+            populateAssigneeDropdown();
+
+            if (currentProjectId) {
+                document.getElementById('taskProject').value = currentProjectId;
+            }
+
+            document.getElementById('taskModal').classList.add('active');
+        }
+
+        async function openEditTaskModal(taskId) {
+            try {
+                const result = await getTask(taskId);
+                if (result && result.success) {
+                    const t = result.data;
+                    document.getElementById('taskModalTitle').textContent = 'Edit Task';
+                    document.getElementById('taskSaveBtn').textContent = 'Update';
+                    document.getElementById('taskId').value = t.id;
+                    document.getElementById('taskTitle').value = t.title;
+                    document.getElementById('taskDesc').value = t.description || '';
+                    document.getElementById('taskStatus').value = t.status;
+                    document.getElementById('taskPriority').value = t.priority;
+                    document.getElementById('taskDueDate').value = t.dueDate || '';
+
+                    populateProjectDropdown();
+                    populateAssigneeDropdown();
+
+                    document.getElementById('taskProject').value = t.projectId;
+                    if (t.assignee) document.getElementById('taskAssignee').value = t.assignee.id;
+
+                    document.getElementById('taskModal').classList.add('active');
+                }
+            } catch (err) {
+                showAlert('alert', 'Failed to load task');
+            }
+        }
+
+        function populateProjectDropdown() {
+            const select = document.getElementById('taskProject');
+            select.innerHTML = '<option value="">Select project...</option>' +
+                projectsList.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('');
+        }
+
+        function populateAssigneeDropdown() {
+            const select = document.getElementById('taskAssignee');
+            select.innerHTML = '<option value="">Unassigned</option>' +
+                usersList.map(u => `<option value="${u.id}">${escHtml(u.name)} (${u.email})</option>`).join('');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.remove('active');
+        }
+
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const taskId = document.getElementById('taskId').value;
+            const data = {
+                title: document.getElementById('taskTitle').value,
+                description: document.getElementById('taskDesc').value,
+                projectId: parseInt(document.getElementById('taskProject').value),
+                status: document.getElementById('taskStatus').value,
+                priority: document.getElementById('taskPriority').value,
+                dueDate: document.getElementById('taskDueDate').value || null,
+                assigneeId: document.getElementById('taskAssignee').value ? parseInt(document.getElementById('taskAssignee').value) : null
+            };
+
+            try {
+                if (taskId) {
+                    await updateTask(taskId, data);
+                } else {
+                    await createTask(data);
+                }
+                closeTaskModal();
+                await loadTasks();
+            } catch (err) {
+                showAlert('taskModalAlert', err.data?.message || 'Failed to save task');
+            }
+        });
+
+        async function handleDeleteTask(taskId) {
+            if (!confirm('Delete this task?')) return;
+            try {
+                await deleteTask(taskId);
+                await loadTasks();
+            } catch (err) {
+                showAlert('alert', err.data?.message || 'Failed to delete task');
+            }
+        }
+
+        function escHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

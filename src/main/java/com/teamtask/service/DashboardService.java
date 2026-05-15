@@ -1,0 +1,122 @@
+package com.teamtask.service;
+
+import com.teamtask.dto.*;
+import com.teamtask.entity.*;
+import com.teamtask.repository.ProjectRepository;
+import com.teamtask.repository.TaskRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class DashboardService {
+
+    private final ProjectRepository projectRepository;
+    private final TaskRepository taskRepository;
+
+    public DashboardResponse getDashboard(User currentUser) {
+        List<Project> projects;
+        List<Task> allTasks;
+
+        if (currentUser.getRole() == Role.ADMIN) {
+            projects = projectRepository.findAll();
+            allTasks = taskRepository.findAll();
+        } else {
+            projects = projectRepository.findByOwnerOrMember(currentUser);
+            allTasks = taskRepository.findByAssigneeOrCreatedBy(currentUser);
+        }
+
+        long totalTasks = allTasks.size();
+        long todoTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.TODO).count();
+        long inProgressTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.IN_PROGRESS).count();
+        long completedTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.DONE).count();
+
+        List<Task> overdueTasks = allTasks.stream()
+                .filter(Task::isOverdue)
+                .collect(Collectors.toList());
+
+        List<TaskResponse> recentTasks = allTasks.stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .limit(10)
+                .map(this::mapTaskToResponse)
+                .collect(Collectors.toList());
+
+        List<TaskResponse> overdueTaskResponses = overdueTasks.stream()
+                .map(this::mapTaskToResponse)
+                .collect(Collectors.toList());
+
+        List<ProjectResponse> projectResponses = projects.stream()
+                .map(this::mapProjectToResponse)
+                .collect(Collectors.toList());
+
+        return DashboardResponse.builder()
+                .totalProjects(projects.size())
+                .totalTasks(totalTasks)
+                .todoTasks(todoTasks)
+                .inProgressTasks(inProgressTasks)
+                .completedTasks(completedTasks)
+                .overdueTasks(overdueTasks.size())
+                .recentTasks(recentTasks)
+                .overDueTaskList(overdueTaskResponses)
+                .projects(projectResponses)
+                .build();
+    }
+
+    private TaskResponse mapTaskToResponse(Task task) {
+        TaskResponse.TaskResponseBuilder builder = TaskResponse.builder()
+                .id(task.getId())
+                .title(task.getTitle())
+                .description(task.getDescription())
+                .status(task.getStatus().name())
+                .priority(task.getPriority().name())
+                .dueDate(task.getDueDate())
+                .overdue(task.isOverdue())
+                .projectId(task.getProject().getId())
+                .projectName(task.getProject().getName())
+                .createdBy(mapUserToSummary(task.getCreatedBy()))
+                .createdAt(task.getCreatedAt())
+                .updatedAt(task.getUpdatedAt());
+
+        if (task.getAssignee() != null) {
+            builder.assignee(mapUserToSummary(task.getAssignee()));
+        }
+
+        return builder.build();
+    }
+
+    private ProjectResponse mapProjectToResponse(Project project) {
+        List<UserSummary> memberSummaries = project.getMembers().stream()
+                .map(this::mapUserToSummary)
+                .collect(Collectors.toList());
+
+        int totalTasks = project.getTasks().size();
+        int completedTasks = (int) project.getTasks().stream()
+                .filter(t -> t.getStatus() == TaskStatus.DONE)
+                .count();
+
+        return ProjectResponse.builder()
+                .id(project.getId())
+                .name(project.getName())
+                .description(project.getDescription())
+                .owner(mapUserToSummary(project.getOwner()))
+                .members(memberSummaries)
+                .totalTasks(totalTasks)
+                .completedTasks(completedTasks)
+                .createdAt(project.getCreatedAt())
+                .updatedAt(project.getUpdatedAt())
+                .build();
+    }
+
+    private UserSummary mapUserToSummary(User user) {
+        return UserSummary.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .build();
+    }
+}

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Team Task Manager</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="logo">📋</div>
+            <h1>Welcome Back</h1>
+            <p class="subtitle">Sign in to Team Task Manager</p>
+
+            <div id="alert" class="alert alert-error"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
+            </form>
+
+            <div class="auth-footer">
+                Don't have an account? <a href="/signup.html">Sign Up</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        // Redirect if already logged in
+        if (isLoggedIn()) {
+            window.location.href = '/dashboard.html';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            btn.textContent = 'Signing in...';
+            btn.disabled = true;
+
+            try {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const result = await login(email, password);
+
+                if (result && result.success) {
+                    setAuth(result.data);
+                    window.location.href = '/dashboard.html';
+                } else {
+                    showAlert('alert', result?.message || 'Login failed');
+                }
+            } catch (err) {
+                const msg = err.data?.message || err.data?.email || 'Invalid email or password';
+                showAlert('alert', msg);
+            } finally {
+                btn.textContent = 'Sign In';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

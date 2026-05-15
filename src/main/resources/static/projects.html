@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projects - Team Task Manager</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>📋 Task Manager</h2>
+                <div class="user-info">
+                    <div class="user-name"></div>
+                    <div><span class="user-role-badge"></span></div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html"><span class="icon">📊</span> Dashboard</a>
+                <a href="/projects.html"><span class="icon">📁</span> Projects</a>
+                <a href="/tasks.html"><span class="icon">✅</span> My Tasks</a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="#" onclick="logout(); return false;">🚪 Logout</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>📁 Projects</h1>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ New Project</button>
+            </div>
+
+            <div id="alert" class="alert alert-error"></div>
+
+            <div id="projectsContainer">
+                <div class="loading"><div class="spinner"></div><p>Loading projects...</p></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create/Edit Project Modal -->
+    <div class="modal-overlay" id="projectModal">
+        <div class="modal">
+            <h2 id="modalTitle">Create Project</h2>
+            <div id="modalAlert" class="alert alert-error"></div>
+            <form id="projectForm">
+                <input type="hidden" id="projectId">
+                <div class="form-group">
+                    <label for="projectName">Project Name</label>
+                    <input type="text" id="projectName" placeholder="Enter project name" required minlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="projectDesc">Description</label>
+                    <textarea id="projectDesc" placeholder="Enter project description"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveBtn">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div class="modal-overlay" id="memberModal">
+        <div class="modal">
+            <h2>Manage Members</h2>
+            <div id="memberAlert" class="alert alert-error"></div>
+            <input type="hidden" id="memberProjectId">
+
+            <div class="form-group">
+                <label>Current Members</label>
+                <div id="currentMembers" class="member-list"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="addMemberSelect">Add Member</label>
+                <select id="addMemberSelect">
+                    <option value="">Select a user...</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeMemberModal()">Close</button>
+                <button type="button" class="btn btn-success" onclick="handleAddMember()">Add Member</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        if (!requireAuth()) { /* redirects */ }
+        initSidebar();
+        let allUsers = [];
+        loadProjects();
+
+        async function loadProjects() {
+            try {
+                const result = await getProjects();
+                if (result && result.success) {
+                    renderProjects(result.data || []);
+                }
+            } catch (err) {
+                showAlert('alert', 'Failed to load projects');
+            }
+        }
+
+        function renderProjects(projects) {
+            const container = document.getElementById('projectsContainer');
+            if (projects.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">📁</div><h3>No projects yet</h3><p>Click "New Project" to create your first project.</p></div>';
+                return;
+            }
+            const user = getUser();
+            container.innerHTML = '<div class="projects-grid">' + projects.map(p => {
+                const pct = p.totalTasks > 0 ? Math.round((p.completedTasks / p.totalTasks) * 100) : 0;
+                const isOwnerOrAdmin = (p.owner && p.owner.id === user.id) || user.role === 'ADMIN';
+                return `
+                <div class="project-card">
+                    <h3>${escHtml(p.name)}</h3>
+                    <p>${escHtml(p.description || 'No description')}</p>
+                    <div class="project-meta">
+                        <span>👤 Owner: ${escHtml(p.owner ? p.owner.name : 'N/A')}</span>
+                        <span>👥 ${p.members ? p.members.length : 0} members</span>
+                    </div>
+                    <div class="project-meta" style="margin-top:8px;">
+                        <span>📝 ${p.completedTasks}/${p.totalTasks} tasks done</span>
+                        <span>${pct}%</span>
+                    </div>
+                    <div class="progress-bar"><div class="fill" style="width:${pct}%"></div></div>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-primary" onclick="window.location.href='/tasks.html?projectId=${p.id}'">📝 Tasks</button>
+                        ${isOwnerOrAdmin ? `
+                            <button class="btn btn-sm btn-success" onclick="openMemberModal(${p.id})">👥 Members</button>
+                            <button class="btn btn-sm btn-warning" onclick="openEditModal(${p.id}, '${escAttr(p.name)}', '${escAttr(p.description || '')}')">✏️ Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="handleDelete(${p.id})">🗑️</button>
+                        ` : ''}
+                    </div>
+                </div>`;
+            }).join('') + '</div>';
+        }
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Create Project';
+            document.getElementById('saveBtn').textContent = 'Create';
+            document.getElementById('projectId').value = '';
+            document.getElementById('projectName').value = '';
+            document.getElementById('projectDesc').value = '';
+            document.getElementById('projectModal').classList.add('active');
+        }
+
+        function openEditModal(id, name, desc) {
+            document.getElementById('modalTitle').textContent = 'Edit Project';
+            document.getElementById('saveBtn').textContent = 'Update';
+            document.getElementById('projectId').value = id;
+            document.getElementById('projectName').value = name;
+            document.getElementById('projectDesc').value = desc;
+            document.getElementById('projectModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('projectModal').classList.remove('active');
+        }
+
+        document.getElementById('projectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('projectId').value;
+            const name = document.getElementById('projectName').value;
+            const desc = document.getElementById('projectDesc').value;
+
+            try {
+                if (id) {
+                    await updateProject(id, name, desc);
+                } else {
+                    await createProject(name, desc);
+                }
+                closeModal();
+                loadProjects();
+            } catch (err) {
+                showAlert('modalAlert', err.data?.message || 'Failed to save project');
+            }
+        });
+
+        async function handleDelete(id) {
+            if (!confirm('Are you sure you want to delete this project? All tasks will be deleted.')) return;
+            try {
+                await deleteProject(id);
+                loadProjects();
+            } catch (err) {
+                showAlert('alert', err.data?.message || 'Failed to delete project');
+            }
+        }
+
+        async function openMemberModal(projectId) {
+            document.getElementById('memberProjectId').value = projectId;
+            document.getElementById('memberModal').classList.add('active');
+
+            try {
+                // Load project details for current members
+                const projResult = await getProject(projectId);
+                if (projResult && projResult.success) {
+                    renderCurrentMembers(projResult.data);
+                }
+
+                // Load all users for dropdown
+                const usersResult = await getAllUsers();
+                if (usersResult && usersResult.success) {
+                    allUsers = usersResult.data || [];
+                    const members = projResult.data.members || [];
+                    const memberIds = members.map(m => m.id);
+                    const select = document.getElementById('addMemberSelect');
+                    select.innerHTML = '<option value="">Select a user...</option>' +
+                        allUsers.filter(u => !memberIds.includes(u.id))
+                            .map(u => `<option value="${u.id}">${escHtml(u.name)} (${u.email})</option>`)
+                            .join('');
+                }
+            } catch (err) {
+                showAlert('memberAlert', 'Failed to load data');
+            }
+        }
+
+        function renderCurrentMembers(project) {
+            const container = document.getElementById('currentMembers');
+            const user = getUser();
+            const isOwnerOrAdmin = (project.owner && project.owner.id === user.id) || user.role === 'ADMIN';
+            container.innerHTML = (project.members || []).map(m => {
+                const canRemove = isOwnerOrAdmin && m.id !== project.owner.id;
+                return `<div class="member-chip">
+                    ${escHtml(m.name)} ${roleBadge(m.role)}
+                    ${m.id === project.owner.id ? ' 👑' : ''}
+                    ${canRemove ? `<span class="remove-btn" onclick="handleRemoveMember(${project.id}, ${m.id})">✕</span>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function closeMemberModal() {
+            document.getElementById('memberModal').classList.remove('active');
+        }
+
+        async function handleAddMember() {
+            const projectId = document.getElementById('memberProjectId').value;
+            const userId = document.getElementById('addMemberSelect').value;
+            if (!userId) { showAlert('memberAlert', 'Please select a user'); return; }
+            try {
+                await addMember(projectId, userId);
+                openMemberModal(projectId); // refresh
+            } catch (err) {
+                showAlert('memberAlert', err.data?.message || 'Failed to add member');
+            }
+        }
+
+        async function handleRemoveMember(projectId, userId) {
+            if (!confirm('Remove this member?')) return;
+            try {
+                await removeMember(projectId, userId);
+                openMemberModal(projectId); // refresh
+            } catch (err) {
+                showAlert('memberAlert', err.data?.message || 'Failed to remove member');
+            }
+        }
+
+        function escHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function escAttr(str) {
+            if (!str) return '';
+            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>
