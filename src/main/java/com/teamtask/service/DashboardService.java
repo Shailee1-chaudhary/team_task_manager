@@ -5,34 +5,48 @@ import com.teamtask.entity.*;
 import com.teamtask.repository.ProjectRepository;
 import com.teamtask.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class DashboardService {
+
+    private static final Logger log = LoggerFactory.getLogger(DashboardService.class);
 
     private final ProjectRepository projectRepository;
     private final TaskRepository taskRepository;
 
     public DashboardResponse getDashboard(User currentUser) {
+        log.info("[DashboardService] Building dashboard for user: {} (id: {}, role: {})", 
+                currentUser.getEmail(), currentUser.getId(), currentUser.getRole());
+
         List<Project> projects;
         List<Task> allTasks;
 
         if (currentUser.getRole() == Role.ADMIN) {
             projects = projectRepository.findAll();
             allTasks = taskRepository.findAll();
+            log.debug("[DashboardService] Admin user - fetching all data");
         } else {
             projects = projectRepository.findByOwnerOrMember(currentUser);
             allTasks = taskRepository.findByAssigneeOrCreatedBy(currentUser);
+            log.debug("[DashboardService] Member user - fetching user-specific data");
         }
 
         long totalTasks = allTasks.size();
         long todoTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.TODO).count();
         long inProgressTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.IN_PROGRESS).count();
+        long blockedTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.BLOCKED).count();
+        long codeReviewTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.CODE_REVIEW).count();
+        long qaTestingTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.QA_TESTING).count();
+        long qaTestingFailedTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.QA_TESTING_FAILED).count();
         long completedTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.DONE).count();
 
         List<Task> overdueTasks = allTasks.stream()
@@ -53,11 +67,18 @@ public class DashboardService {
                 .map(this::mapProjectToResponse)
                 .collect(Collectors.toList());
 
+        log.info("[DashboardService] Dashboard built - projects: {}, totalTasks: {}, todo: {}, inProgress: {}, blocked: {}, codeReview: {}, qaTesting: {}, qaTestingFailed: {}, done: {}, overdue: {}",
+                projects.size(), totalTasks, todoTasks, inProgressTasks, blockedTasks, codeReviewTasks, qaTestingTasks, qaTestingFailedTasks, completedTasks, overdueTasks.size());
+
         return DashboardResponse.builder()
                 .totalProjects(projects.size())
                 .totalTasks(totalTasks)
                 .todoTasks(todoTasks)
                 .inProgressTasks(inProgressTasks)
+                .blockedTasks(blockedTasks)
+                .codeReviewTasks(codeReviewTasks)
+                .qaTestingTasks(qaTestingTasks)
+                .qaTestingFailedTasks(qaTestingFailedTasks)
                 .completedTasks(completedTasks)
                 .overdueTasks(overdueTasks.size())
                 .recentTasks(recentTasks)

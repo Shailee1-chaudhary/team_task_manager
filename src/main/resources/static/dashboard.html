@@ -64,6 +64,34 @@
                     </div>
                 </div>
                 <div class="stat-card">
+                    <div class="stat-icon">🚫</div>
+                    <div class="stat-info">
+                        <h3 id="blockedTasks">0</h3>
+                        <p>Blocked</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔍</div>
+                    <div class="stat-info">
+                        <h3 id="codeReviewTasks">0</h3>
+                        <p>Code Review</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🧪</div>
+                    <div class="stat-info">
+                        <h3 id="qaTestingTasks">0</h3>
+                        <p>QA Testing</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-info">
+                        <h3 id="qaTestingFailedTasks">0</h3>
+                        <p>QA Failed</p>
+                    </div>
+                </div>
+                <div class="stat-card">
                     <div class="stat-icon">🟢</div>
                     <div class="stat-info">
                         <h3 id="completedTasks">0</h3>
@@ -126,6 +154,10 @@
                     document.getElementById('totalTasks').textContent = d.totalTasks;
                     document.getElementById('todoTasks').textContent = d.todoTasks;
                     document.getElementById('inProgressTasks').textContent = d.inProgressTasks;
+                    document.getElementById('blockedTasks').textContent = d.blockedTasks;
+                    document.getElementById('codeReviewTasks').textContent = d.codeReviewTasks;
+                    document.getElementById('qaTestingTasks').textContent = d.qaTestingTasks;
+                    document.getElementById('qaTestingFailedTasks').textContent = d.qaTestingFailedTasks;
                     document.getElementById('completedTasks').textContent = d.completedTasks;
                     document.getElementById('overdueTasks').textContent = d.overdueTasks;
 

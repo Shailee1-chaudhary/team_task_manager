@@ -2,6 +2,8 @@ package com.teamtask.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -16,6 +18,8 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtUtil.class);
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -27,11 +31,15 @@ public class JwtUtil {
     }
 
     public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+        String username = extractClaim(token, Claims::getSubject);
+        log.debug("[JwtUtil] Extracted username from token: {}", username);
+        return username;
     }
 
     public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+        Date exp = extractClaim(token, Claims::getExpiration);
+        log.debug("[JwtUtil] Token expiration: {}", exp);
+        return exp;
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -40,21 +48,35 @@ public class JwtUtil {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (ExpiredJwtException e) {
+            log.warn("[JwtUtil] Token expired: {}", e.getMessage());
+            throw e;
+        } catch (JwtException e) {
+            log.error("[JwtUtil] Invalid JWT token: {} - {}", e.getClass().getSimpleName(), e.getMessage());
+            throw e;
+        }
     }
 
     private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+        boolean expired = extractExpiration(token).before(new Date());
+        if (expired) {
+            log.warn("[JwtUtil] Token is expired");
+        }
+        return expired;
     }
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("authorities", userDetails.getAuthorities());
-        return createToken(claims, userDetails.getUsername());
+        String token = createToken(claims, userDetails.getUsername());
+        log.info("[JwtUtil] Token generated for user: {} (expires in {} ms)", userDetails.getUsername(), expiration);
+        return token;
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
@@ -69,6 +91,8 @@ public class JwtUtil {
 
     public boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        boolean valid = (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        log.debug("[JwtUtil] Token validation for user '{}': {}", username, valid ? "VALID" : "INVALID");
+        return valid;
     }
 }

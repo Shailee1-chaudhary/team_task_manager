@@ -96,18 +96,26 @@
         loadProjects();
 
         async function loadProjects() {
+            console.log('[Projects] Loading projects...');
             try {
                 const result = await getProjects();
+                console.log('[Projects] API response:', result);
                 if (result && result.success) {
                     renderProjects(result.data || []);
+                } else {
+                    console.error('[Projects] Unexpected response:', result);
+                    showAlert('alert', 'Unexpected response from server: ' + JSON.stringify(result));
                 }
             } catch (err) {
-                showAlert('alert', 'Failed to load projects');
+                console.error('[Projects] Failed to load projects:', err);
+                const msg = err.data?.message || err.message || 'Failed to load projects';
+                showAlert('alert', msg + (err.status ? ' (HTTP ' + err.status + ')' : ''));
             }
         }
 
         function renderProjects(projects) {
             const container = document.getElementById('projectsContainer');
+            console.log('[Projects] Rendering', projects.length, 'projects');
             if (projects.length === 0) {
                 container.innerHTML = '<div class="empty-state"><div class="icon">📁</div><h3>No projects yet</h3><p>Click "New Project" to create your first project.</p></div>';
                 return;
@@ -169,25 +177,34 @@
             const name = document.getElementById('projectName').value;
             const desc = document.getElementById('projectDesc').value;
 
+            console.log('[Projects] Submitting project form - id:', id || 'NEW', 'name:', name);
+
             try {
                 if (id) {
                     await updateProject(id, name, desc);
+                    console.log('[Projects] Project updated successfully');
                 } else {
                     await createProject(name, desc);
+                    console.log('[Projects] Project created successfully');
                 }
                 closeModal();
                 loadProjects();
             } catch (err) {
-                showAlert('modalAlert', err.data?.message || 'Failed to save project');
+                console.error('[Projects] Failed to save project:', err);
+                const msg = err.data?.message || 'Failed to save project';
+                showAlert('modalAlert', msg + (err.status ? ' (HTTP ' + err.status + ')' : ''));
             }
         });
 
         async function handleDelete(id) {
             if (!confirm('Are you sure you want to delete this project? All tasks will be deleted.')) return;
+            console.log('[Projects] Deleting project:', id);
             try {
                 await deleteProject(id);
+                console.log('[Projects] Project deleted successfully');
                 loadProjects();
             } catch (err) {
+                console.error('[Projects] Failed to delete project:', err);
                 showAlert('alert', err.data?.message || 'Failed to delete project');
             }
         }
@@ -216,6 +233,7 @@
                             .join('');
                 }
             } catch (err) {
+                console.error('[Projects] Failed to load member data:', err);
                 showAlert('memberAlert', 'Failed to load data');
             }
         }
@@ -242,20 +260,24 @@
             const projectId = document.getElementById('memberProjectId').value;
             const userId = document.getElementById('addMemberSelect').value;
             if (!userId) { showAlert('memberAlert', 'Please select a user'); return; }
+            console.log('[Projects] Adding member:', userId, 'to project:', projectId);
             try {
                 await addMember(projectId, userId);
                 openMemberModal(projectId); // refresh
             } catch (err) {
+                console.error('[Projects] Failed to add member:', err);
                 showAlert('memberAlert', err.data?.message || 'Failed to add member');
             }
         }
 
         async function handleRemoveMember(projectId, userId) {
             if (!confirm('Remove this member?')) return;
+            console.log('[Projects] Removing member:', userId, 'from project:', projectId);
             try {
                 await removeMember(projectId, userId);
                 openMemberModal(projectId); // refresh
             } catch (err) {
+                console.error('[Projects] Failed to remove member:', err);
                 showAlert('memberAlert', err.data?.message || 'Failed to remove member');
             }
         }

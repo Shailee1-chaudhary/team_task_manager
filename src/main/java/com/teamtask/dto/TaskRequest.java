@@ -21,9 +21,11 @@ public class TaskRequest {
     @Size(max = 2000)
     private String description;
 
-    private String status; // TODO, IN_PROGRESS, DONE
+    private String status; // TODO, IN_PROGRESS, BLOCKED, CODE_REVIEW, QA_TESTING, QA_TESTING_FAILED, DONE
 
     private String priority; // LOW, MEDIUM, HIGH
+
+    private Integer storyPoints;
 
     private LocalDate dueDate;
 

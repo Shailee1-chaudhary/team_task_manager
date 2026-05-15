@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -19,6 +20,7 @@ public class TaskResponse {
     private String description;
     private String status;
     private String priority;
+    private Integer storyPoints;
     private LocalDate dueDate;
     private boolean overdue;
     private Long projectId;
@@ -27,4 +29,6 @@ public class TaskResponse {
     private UserSummary createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private long progressCount;
+    private List<CommentResponse> progressNotes;
 }

@@ -119,6 +119,10 @@ tr:hover { background: #f8f9ff; }
 }
 .badge-todo { background: #e3f2fd; color: #1565c0; }
 .badge-progress { background: #fff3e0; color: #e65100; }
+.badge-blocked { background: #fce4ec; color: #b71c1c; }
+.badge-code-review { background: #e8eaf6; color: #283593; }
+.badge-qa-testing { background: #e0f7fa; color: #00695c; }
+.badge-qa-failed { background: #fff3e0; color: #bf360c; }
 .badge-done { background: #e8f5e9; color: #2e7d32; }
 .badge-low { background: #f3e5f5; color: #7b1fa2; }
 .badge-medium { background: #fff8e1; color: #f57f17; }
@@ -126,6 +130,7 @@ tr:hover { background: #f8f9ff; }
 .badge-overdue { background: #ffebee; color: #b71c1c; }
 .badge-admin { background: #667eea; color: #fff; }
 .badge-member { background: #48c774; color: #fff; }
+.badge-sp { background: #e8eaf6; color: #283593; font-size: 11px; padding: 3px 8px; }
 
 /* ===== Modal ===== */
 .modal-overlay {
@@ -139,6 +144,84 @@ tr:hover { background: #f8f9ff; }
 }
 .modal h2 { margin-bottom: 24px; color: #2c3e50; }
 .modal-actions { display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end; }
+
+/* ===== Task Detail Modal ===== */
+.modal-large {
+    background: #fff; border-radius: 16px; padding: 0; width: 100%; max-width: 780px;
+    max-height: 92vh; overflow-y: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+}
+.task-detail-header {
+    padding: 28px 32px 20px; border-bottom: 1px solid #e9ecef;
+    position: relative;
+}
+.task-detail-header .close-btn {
+    position: absolute; top: 16px; right: 20px; background: none; border: none;
+    font-size: 24px; cursor: pointer; color: #999; padding: 4px 8px; border-radius: 6px;
+    transition: all 0.2s;
+}
+.task-detail-header .close-btn:hover { background: #f0f0f0; color: #333; }
+.task-detail-header h2 { font-size: 22px; color: #2c3e50; margin-bottom: 12px; padding-right: 40px; }
+.task-detail-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.task-detail-body { padding: 24px 32px; }
+.task-detail-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; margin-bottom: 24px;
+}
+.task-detail-field label {
+    display: block; font-size: 11px; font-weight: 700; color: #888;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
+}
+.task-detail-field .value { font-size: 14px; color: #2c3e50; font-weight: 500; }
+.task-detail-description {
+    background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 24px;
+    font-size: 14px; line-height: 1.6; color: #444; white-space: pre-wrap;
+}
+.task-detail-description.empty { color: #aaa; font-style: italic; }
+
+/* Progress Notes Section */
+.progress-section { border-top: 1px solid #e9ecef; padding-top: 24px; }
+.progress-section h3 { font-size: 16px; color: #2c3e50; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.progress-section h3 .count {
+    background: #667eea; color: #fff; font-size: 12px; padding: 2px 8px;
+    border-radius: 10px; font-weight: 600;
+}
+.progress-input-area {
+    display: flex; gap: 10px; margin-bottom: 20px;
+}
+.progress-input-area textarea {
+    flex: 1; padding: 10px 14px; border: 2px solid #e1e5eb; border-radius: 8px;
+    font-size: 14px; resize: vertical; min-height: 44px; max-height: 120px;
+    outline: none; background: #fafbfc; font-family: inherit; transition: border-color 0.3s;
+}
+.progress-input-area textarea:focus { border-color: #667eea; background: #fff; }
+.progress-input-area button {
+    align-self: flex-end; padding: 10px 20px; background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
+    font-size: 14px; transition: opacity 0.2s; white-space: nowrap;
+}
+.progress-input-area button:hover { opacity: 0.9; }
+
+.progress-list { max-height: 340px; overflow-y: auto; }
+.progress-item {
+    padding: 12px 16px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;
+    border-left: 3px solid #667eea; position: relative;
+}
+.progress-item:hover { background: #f0f2f5; }
+.progress-item .progress-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px; font-size: 12px; color: #888;
+}
+.progress-item .progress-meta .author { font-weight: 600; color: #555; }
+.progress-item .progress-content { font-size: 14px; color: #333; line-height: 1.5; white-space: pre-wrap; }
+.progress-item .delete-progress {
+    position: absolute; top: 8px; right: 8px; background: none; border: none;
+    color: #ccc; cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px;
+    transition: all 0.2s; display: none;
+}
+.progress-item:hover .delete-progress { display: block; }
+.progress-item .delete-progress:hover { color: #dc3545; background: #fee; }
+
+.progress-empty { text-align: center; padding: 24px; color: #aaa; font-size: 14px; }
 
 /* ===== Project Cards ===== */
 .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
@@ -158,14 +241,17 @@ tr:hover { background: #f8f9ff; }
 .task-item {
     background: #fff; border-radius: 8px; padding: 16px 20px; margin-bottom: 12px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: space-between;
-    border-left: 4px solid #667eea; transition: all 0.2s;
+    border-left: 4px solid #667eea; transition: all 0.2s; cursor: pointer;
 }
-.task-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.task-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-1px); }
 .task-item.overdue { border-left-color: #dc3545; }
 .task-item .task-info { flex: 1; }
 .task-item .task-info h4 { font-size: 15px; color: #2c3e50; margin-bottom: 4px; }
-.task-item .task-info .task-meta { font-size: 12px; color: #888; display: flex; gap: 12px; flex-wrap: wrap; }
+.task-item .task-info .task-meta { font-size: 12px; color: #888; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .task-item .task-actions { display: flex; gap: 8px; align-items: center; }
+.task-item .progress-indicator {
+    display: inline-flex; align-items: center; gap: 3px; color: #667eea; font-size: 12px; font-weight: 600;
+}
 
 /* ===== Empty State ===== */
 .empty-state { text-align: center; padding: 60px 20px; color: #888; }

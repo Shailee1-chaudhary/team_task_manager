@@ -34,6 +34,10 @@
                         <option value="">All Status</option>
                         <option value="TODO">To Do</option>
                         <option value="IN_PROGRESS">In Progress</option>
+                        <option value="BLOCKED">Blocked</option>
+                        <option value="CODE_REVIEW">Code Review</option>
+                        <option value="QA_TESTING">QA Testing</option>
+                        <option value="QA_TESTING_FAILED">QA Testing Failed</option>
                         <option value="DONE">Done</option>
                     </select>
                     <button class="btn btn-primary" onclick="openCreateTaskModal()">+ New Task</button>
@@ -75,31 +79,108 @@
                         <option value="">Unassigned</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="taskStatus">Status</label>
-                    <select id="taskStatus">
-                        <option value="TODO">To Do</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="DONE">Done</option>
-                    </select>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="form-group">
+                        <label for="taskStatus">Status</label>
+                        <select id="taskStatus">
+                            <option value="TODO">To Do</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="BLOCKED">Blocked</option>
+                            <option value="CODE_REVIEW">Code Review</option>
+                            <option value="QA_TESTING">QA Testing</option>
+                            <option value="QA_TESTING_FAILED">QA Testing Failed</option>
+                            <option value="DONE">Done</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskPriority">Priority</label>
+                        <select id="taskPriority">
+                            <option value="LOW">Low</option>
+                            <option value="MEDIUM" selected>Medium</option>
+                            <option value="HIGH">High</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="taskPriority">Priority</label>
-                    <select id="taskPriority">
-                        <option value="LOW">Low</option>
-                        <option value="MEDIUM" selected>Medium</option>
-                        <option value="HIGH">High</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="taskDueDate">Due Date</label>
-                    <input type="date" id="taskDueDate">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="form-group">
+                        <label for="taskStoryPoints">Story Points</label>
+                        <select id="taskStoryPoints">
+                            <option value="">None</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="5">5</option>
+                            <option value="8">8</option>
+                            <option value="13">13</option>
+                            <option value="21">21</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDueDate">Due Date</label>
+                        <input type="date" id="taskDueDate">
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="taskSaveBtn">Create</button>
+                    <button type="submit" class="btn btn-primary" id="taskSaveBtn" style="width:auto;">Create</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Task Detail Modal -->
+    <div class="modal-overlay" id="taskDetailModal">
+        <div class="modal-large">
+            <div class="task-detail-header">
+                <button class="close-btn" onclick="closeTaskDetailModal()">&times;</button>
+                <h2 id="detailTitle"></h2>
+                <div class="task-detail-badges" id="detailBadges"></div>
+            </div>
+            <div class="task-detail-body">
+                <div class="task-detail-grid">
+                    <div class="task-detail-field">
+                        <label>Project</label>
+                        <div class="value" id="detailProject"></div>
+                    </div>
+                    <div class="task-detail-field">
+                        <label>Assignee</label>
+                        <div class="value" id="detailAssignee"></div>
+                    </div>
+                    <div class="task-detail-field">
+                        <label>Created By</label>
+                        <div class="value" id="detailCreatedBy"></div>
+                    </div>
+                    <div class="task-detail-field">
+                        <label>Due Date</label>
+                        <div class="value" id="detailDueDate"></div>
+                    </div>
+                    <div class="task-detail-field">
+                        <label>Story Points</label>
+                        <div class="value" id="detailStoryPoints"></div>
+                    </div>
+                    <div class="task-detail-field">
+                        <label>Created</label>
+                        <div class="value" id="detailCreatedAt"></div>
+                    </div>
+                </div>
+
+                <div id="detailDescriptionSection">
+                    <label style="display:block;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Description</label>
+                    <div class="task-detail-description" id="detailDescription"></div>
+                </div>
+
+                <!-- Progress Notes Section -->
+                <div class="progress-section">
+                    <h3>📝 Progress Notes <span class="count" id="progressCount">0</span></h3>
+                    <div class="progress-input-area">
+                        <textarea id="progressInput" placeholder="Add a progress update..." rows="2"></textarea>
+                        <button onclick="handleAddProgress()">Add</button>
+                    </div>
+                    <div class="progress-list" id="progressList">
+                        <div class="progress-empty">No progress notes yet. Add one above!</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -112,6 +193,7 @@
         let allTasks = [];
         let projectsList = [];
         let usersList = [];
+        let currentDetailTaskId = null;
 
         // Check if viewing project-specific tasks
         const params = new URLSearchParams(window.location.search);
@@ -183,24 +265,30 @@
             const user = getUser();
             container.innerHTML = tasks.map(t => {
                 return `
-                <div class="task-item ${t.overdue ? 'overdue' : ''}">
+                <div class="task-item ${t.overdue ? 'overdue' : ''}" onclick="openTaskDetail(${t.id})">
                     <div class="task-info">
                         <h4>${escHtml(t.title)}</h4>
-                        ${t.description ? '<p style="font-size:13px;color:#666;margin:4px 0;">' + escHtml(t.description) + '</p>' : ''}
+                        ${t.description ? '<p style="font-size:13px;color:#666;margin:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:600px;">' + escHtml(t.description) + '</p>' : ''}
                         <div class="task-meta">
                             <span>📁 ${escHtml(t.projectName)}</span>
                             <span>${statusBadge(t.status)}</span>
                             <span>${priorityBadge(t.priority)}</span>
+                            ${t.storyPoints ? '<span>' + storyPointsBadge(t.storyPoints) + '</span>' : ''}
                             ${t.dueDate ? '<span>📅 ' + formatDate(t.dueDate) + '</span>' : ''}
                             ${t.overdue ? '<span class="badge badge-overdue">OVERDUE</span>' : ''}
                             ${t.assignee ? '<span>👤 ' + escHtml(t.assignee.name) + '</span>' : '<span>👤 Unassigned</span>'}
                             ${t.createdBy ? '<span>✍️ ' + escHtml(t.createdBy.name) + '</span>' : ''}
+                            ${t.progressCount > 0 ? '<span class="progress-indicator">💬 ' + t.progressCount + '</span>' : ''}
                         </div>
                     </div>
-                    <div class="task-actions">
+                    <div class="task-actions" onclick="event.stopPropagation()">
                         <select onchange="handleStatusChange(${t.id}, this.value)" style="padding:6px;border-radius:6px;border:1px solid #ddd;font-size:12px;">
                             <option value="TODO" ${t.status === 'TODO' ? 'selected' : ''}>To Do</option>
                             <option value="IN_PROGRESS" ${t.status === 'IN_PROGRESS' ? 'selected' : ''}>In Progress</option>
+                            <option value="BLOCKED" ${t.status === 'BLOCKED' ? 'selected' : ''}>Blocked</option>
+                            <option value="CODE_REVIEW" ${t.status === 'CODE_REVIEW' ? 'selected' : ''}>Code Review</option>
+                            <option value="QA_TESTING" ${t.status === 'QA_TESTING' ? 'selected' : ''}>QA Testing</option>
+                            <option value="QA_TESTING_FAILED" ${t.status === 'QA_TESTING_FAILED' ? 'selected' : ''}>QA Failed</option>
                             <option value="DONE" ${t.status === 'DONE' ? 'selected' : ''}>Done</option>
                         </select>
                         <button class="btn btn-sm btn-warning" onclick="openEditTaskModal(${t.id})">✏️</button>
@@ -210,6 +298,130 @@
             }).join('');
         }
 
+        // ===== Task Detail Modal =====
+        async function openTaskDetail(taskId) {
+            currentDetailTaskId = taskId;
+            try {
+                const result = await getTask(taskId);
+                if (result && result.success) {
+                    const t = result.data;
+
+                    document.getElementById('detailTitle').textContent = t.title;
+
+                    // Badges
+                    document.getElementById('detailBadges').innerHTML = `
+                        ${statusBadge(t.status)}
+                        ${priorityBadge(t.priority)}
+                        ${t.storyPoints ? storyPointsBadge(t.storyPoints) : ''}
+                        ${t.overdue ? '<span class="badge badge-overdue">OVERDUE</span>' : ''}
+                    `;
+
+                    // Fields
+                    document.getElementById('detailProject').textContent = t.projectName;
+                    document.getElementById('detailAssignee').textContent = t.assignee ? t.assignee.name : 'Unassigned';
+                    document.getElementById('detailCreatedBy').textContent = t.createdBy ? t.createdBy.name : '—';
+                    document.getElementById('detailDueDate').textContent = t.dueDate ? formatDate(t.dueDate) : 'No due date';
+                    document.getElementById('detailStoryPoints').textContent = t.storyPoints ? t.storyPoints + ' SP' : 'Not estimated';
+                    document.getElementById('detailCreatedAt').textContent = formatDateTime(t.createdAt);
+
+                    // Description
+                    const descEl = document.getElementById('detailDescription');
+                    if (t.description) {
+                        descEl.textContent = t.description;
+                        descEl.classList.remove('empty');
+                    } else {
+                        descEl.textContent = 'No description provided.';
+                        descEl.classList.add('empty');
+                    }
+
+                    // Render progress notes
+                    renderProgressNotes(t.progressNotes || []);
+
+                    document.getElementById('taskDetailModal').classList.add('active');
+                }
+            } catch (err) {
+                const msg = err.data?.message || 'Failed to load task details';
+                showAlert('alert', msg);
+            }
+        }
+
+        function closeTaskDetailModal() {
+            document.getElementById('taskDetailModal').classList.remove('active');
+            currentDetailTaskId = null;
+            document.getElementById('progressInput').value = '';
+        }
+
+        function renderProgressNotes(notes) {
+            const list = document.getElementById('progressList');
+            const countEl = document.getElementById('progressCount');
+            countEl.textContent = notes.length;
+
+            if (notes.length === 0) {
+                list.innerHTML = '<div class="progress-empty">No progress notes yet. Add one above!</div>';
+                return;
+            }
+
+            const currentUser = getUser();
+            list.innerHTML = notes.map(n => `
+                <div class="progress-item">
+                    <div class="progress-meta">
+                        <span><span class="author">${escHtml(n.author.name)}</span> &middot; ${formatDateTime(n.createdAt)}</span>
+                    </div>
+                    <div class="progress-content">${escHtml(n.content)}</div>
+                    ${(currentUser && (n.author.id === currentUser.id || currentUser.role === 'ADMIN'))
+                        ? '<button class="delete-progress" onclick="handleDeleteProgress(' + n.id + ')" title="Delete">🗑️</button>'
+                        : ''}
+                </div>
+            `).join('');
+        }
+
+        async function handleAddProgress() {
+            const input = document.getElementById('progressInput');
+            const content = input.value.trim();
+            if (!content) return;
+            if (!currentDetailTaskId) return;
+
+            try {
+                await addTaskProgress(currentDetailTaskId, content);
+                input.value = '';
+                // Reload the task detail to get updated progress
+                const result = await getTask(currentDetailTaskId);
+                if (result && result.success) {
+                    renderProgressNotes(result.data.progressNotes || []);
+                }
+                // Refresh task list to update progress count
+                await loadTasks();
+            } catch (err) {
+                showAlert('alert', err.data?.message || 'Failed to add progress note');
+            }
+        }
+
+        async function handleDeleteProgress(progressId) {
+            if (!confirm('Delete this progress note?')) return;
+            if (!currentDetailTaskId) return;
+
+            try {
+                await deleteTaskProgress(currentDetailTaskId, progressId);
+                // Reload task detail
+                const result = await getTask(currentDetailTaskId);
+                if (result && result.success) {
+                    renderProgressNotes(result.data.progressNotes || []);
+                }
+                await loadTasks();
+            } catch (err) {
+                showAlert('alert', err.data?.message || 'Failed to delete progress note');
+            }
+        }
+
+        // Allow pressing Enter (without Shift) to submit progress
+        document.getElementById('progressInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleAddProgress();
+            }
+        });
+
+        // ===== Status Change =====
         async function handleStatusChange(taskId, newStatus) {
             try {
                 await updateTaskStatus(taskId, newStatus);
@@ -220,6 +432,7 @@
             }
         }
 
+        // ===== Create/Edit Task Modal =====
         function openCreateTaskModal() {
             document.getElementById('taskModalTitle').textContent = 'Create Task';
             document.getElementById('taskSaveBtn').textContent = 'Create';
@@ -228,6 +441,7 @@
             document.getElementById('taskDesc').value = '';
             document.getElementById('taskStatus').value = 'TODO';
             document.getElementById('taskPriority').value = 'MEDIUM';
+            document.getElementById('taskStoryPoints').value = '';
             document.getElementById('taskDueDate').value = '';
 
             populateProjectDropdown();
@@ -252,6 +466,7 @@
                     document.getElementById('taskDesc').value = t.description || '';
                     document.getElementById('taskStatus').value = t.status;
                     document.getElementById('taskPriority').value = t.priority;
+                    document.getElementById('taskStoryPoints').value = t.storyPoints || '';
                     document.getElementById('taskDueDate').value = t.dueDate || '';
 
                     populateProjectDropdown();
@@ -286,12 +501,14 @@
         document.getElementById('taskForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const taskId = document.getElementById('taskId').value;
+            const spVal = document.getElementById('taskStoryPoints').value;
             const data = {
                 title: document.getElementById('taskTitle').value,
                 description: document.getElementById('taskDesc').value,
                 projectId: parseInt(document.getElementById('taskProject').value),
                 status: document.getElementById('taskStatus').value,
                 priority: document.getElementById('taskPriority').value,
+                storyPoints: spVal ? parseInt(spVal) : null,
                 dueDate: document.getElementById('taskDueDate').value || null,
                 assigneeId: document.getElementById('taskAssignee').value ? parseInt(document.getElementById('taskAssignee').value) : null
             };
@@ -318,6 +535,16 @@
                 showAlert('alert', err.data?.message || 'Failed to delete task');
             }
         }
+
+        // Close detail modal on overlay click
+        document.getElementById('taskDetailModal').addEventListener('click', function(e) {
+            if (e.target === this) closeTaskDetailModal();
+        });
+
+        // Close edit modal on overlay click
+        document.getElementById('taskModal').addEventListener('click', function(e) {
+            if (e.target === this) closeTaskModal();
+        });
 
         function escHtml(str) {
             if (!str) return '';

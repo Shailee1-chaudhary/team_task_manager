@@ -7,6 +7,8 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "tasks")
@@ -40,6 +42,9 @@ public class Task {
     @Builder.Default
     private TaskPriority priority = TaskPriority.MEDIUM;
 
+    @Column(name = "story_points")
+    private Integer storyPoints;
+
     @Column(name = "due_date")
     private LocalDate dueDate;
 
@@ -54,6 +59,10 @@ public class Task {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id", nullable = false)
     private User createdBy;
+
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Comment> progressNotes = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
